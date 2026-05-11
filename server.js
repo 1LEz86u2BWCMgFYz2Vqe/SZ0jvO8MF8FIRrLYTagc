@@ -13,6 +13,34 @@ const server = http.createServer((req, res) => {
     }
 });
 
+let currStoreAssets, currStoreStr;
+const SAPI_KEY = process.env.SAPIKEY;
+const checkStore = async() => {
+    try {
+        const res = await fetch(`https://api.steampowered.com/ISteamEconomy/GetAssetPrices/v1/?appid=730&key=${SAPI_KEY}`);
+        const data = await res.json();
+        if (data.result?.success) {
+            const newAssetsStr = JSON.stringify(data.result.assets);
+            if (newAssetsStr !== currStoreStr) {
+                currStoreAssets = data.result.assets;
+                currStoreStr = newAssetsStr;         
+                wss.clients.forEach(client => {
+                    if (client.readyState === 1 && client.isAuthenticated) {
+                        client.send(JSON.stringify({
+                            type: 'store_update',
+                            assets: currStoreAssets
+                        }));
+                    }
+                });
+            }
+        }
+    } catch(e) { 
+        console.log(e);
+    }
+};
+setInterval(checkStore, 1*1e3);
+checkStore();
+
 const wss = new WebSocketServer({ server });
 const API_KEY = process.env.APIKEY;
 const ENDPOINT = process.env.ENDPOINT;
@@ -116,6 +144,12 @@ wss.on('connection', (ws) => {
                 } else {
                     ws.close();
                 }
+            }
+            if (payload.type === 'request_store_assets' && currStoreAssets) {
+                ws.send(JSON.stringify({
+                    type: 'store_update',
+                    assets: currStoreAssets
+                }));
             }
         } catch (e) { }
     });
