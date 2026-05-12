@@ -18,6 +18,11 @@ const SAPI_KEY = process.env.SAPIKEY;
 const checkStore = async() => {
     try {
         const res = await fetch(`https://api.steampowered.com/ISteamEconomy/GetAssetPrices/v1/?appid=730&key=${SAPI_KEY}`);
+
+        if (!res.ok) return;
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) return;
+
         const data = await res.json();
         if (data.result?.success) {
             const newAssetsStr = JSON.stringify(data.result.assets);
