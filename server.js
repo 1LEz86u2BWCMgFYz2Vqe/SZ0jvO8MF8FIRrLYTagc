@@ -60,20 +60,14 @@ const startTracking = () => {
         if (!latestId) return;
 
         let activeId;
-        for (let i = -1; i <= 10; i++) {
+        for (let i = -1; i <= 1; i++) {
             const id = latestId + i;
-            try {
-                const res = await fetch(ENDPOINT + id);
-                if (res.body) await res.body.cancel();
-                if (res.status === 401) {
-                    activeId = id;
-                } else if (res.status != 200) {
-                    console.log(`Something went wrong on ID ${id} (status: ${res.status}) retrying in 1s`);
-                    throw new Error();
-                }
-            } catch {
-                await new Promise(r => setTimeout(r, 1e3));
-                i--;
+            const res = await fetch(ENDPOINT + id);
+            if (res.body) await res.body.cancel();
+            if (res.status === 401) {
+                activeId = id;
+            } else {
+                console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
             }
         }
 
