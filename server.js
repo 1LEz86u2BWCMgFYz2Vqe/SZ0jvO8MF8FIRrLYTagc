@@ -66,7 +66,7 @@ const startTracking = () => {
             if (res.body) await res.body.cancel();
             if (res.status === 401) {
                 activeId = id;
-            } else {
+            } else if (res.status != 200) {
                 console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
             }
         }
@@ -123,7 +123,7 @@ const startTracking = () => {
     };
 
     const delay = 0.5;
-    checkInt = setInterval(check, delay * 1e3);
+    checkInt = setInterval(check, delay*1e3);
 };
 
 wss.on('connection', (ws) => {
