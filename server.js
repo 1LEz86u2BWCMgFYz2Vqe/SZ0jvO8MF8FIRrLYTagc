@@ -62,12 +62,18 @@ const startTracking = () => {
         let activeId;
         for (let i = -1; i <= 1; i++) {
             const id = latestId + i;
-            const res = await fetch(ENDPOINT + id);
-            if (res.body) await res.body.cancel();
-            if (res.status === 401) {
-                activeId = id;
-            } else if (res.status != 200) {
-                console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
+            
+            try {
+                const res = await fetch(ENDPOINT + id);
+                if (res.body) await res.body.cancel();
+                
+                if (res.status === 401) {
+                    activeId = id;
+                } else if (res.status !== 200) {
+                    console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
+                }
+            } catch (err) {
+                console.log(`Fetch error on ID ${id}:`, err);
             }
         }
 
