@@ -69,7 +69,7 @@ const startTracking = () => {
                 
                 if (res.status === 401) {
                     activeId = id;
-                } else if (res.status !== 200) {
+                } else if (res.status !== 400) {
                     console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
                 }
             } catch (err) {
