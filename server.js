@@ -71,9 +71,11 @@ const startTracking = () => {
                     activeId = id;
                 } else if (res.status !== 400) {
                     console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
+                    return;
                 }
             } catch (err) {
                 console.log(`Fetch error on ID ${id}:`, err);
+                return;
             }
         }
 
