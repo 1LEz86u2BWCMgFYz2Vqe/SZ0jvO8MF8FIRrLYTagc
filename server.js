@@ -48,7 +48,11 @@ checkStore();
 
 const wss = new WebSocketServer({ server });
 const API_KEY = process.env.APIKEY;
-const ENDPOINT = process.env.ENDPOINT;
+const ENDPOINTS = [
+    process.env.ENDPOINT1,
+    process.env.ENDPOINT2,
+];
+
 let latestId, lastEvent, checkInt;
 
 const startTracking = () => {
@@ -56,8 +60,12 @@ const startTracking = () => {
 
     console.log(`Tracking started. Baseline: ${latestId}`);
 
-    const check = async () => {
+    let currEndpointIndex = 0;
+    const check = async() => {
         if (!latestId) return;
+        
+        const ENDPOINT = ENDPOINTS[currEndpointIndex];
+        currEndpointIndex = (currEndpointIndex + 1) % ENDPOINTS.length;
 
         let activeId;
         for (let i = -1; i <= 1; i++) {
