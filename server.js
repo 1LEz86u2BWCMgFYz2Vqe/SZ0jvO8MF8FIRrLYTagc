@@ -138,7 +138,7 @@ const startTracking = () => {
         latestId = activeId;
     };
 
-    const delay = 0.5;
+    const delay = 3;
     checkInt = setInterval(check, delay*1e3);
 };
 
