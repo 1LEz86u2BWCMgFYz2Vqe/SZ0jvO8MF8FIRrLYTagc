@@ -49,7 +49,6 @@ checkStore();
 const wss = new WebSocketServer({ server });
 const API_KEY = process.env.APIKEY;
 const ENDPOINTS = [
-    process.env.ENDPOINT1,
     process.env.ENDPOINT2,
     process.env.ENDPOINT3,
     process.env.ENDPOINT4,
