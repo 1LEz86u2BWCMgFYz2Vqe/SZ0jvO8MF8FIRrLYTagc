@@ -51,6 +51,9 @@ const API_KEY = process.env.APIKEY;
 const ENDPOINTS = [
     process.env.ENDPOINT1,
     process.env.ENDPOINT2,
+    process.env.ENDPOINT3,
+    process.env.ENDPOINT4,
+    process.env.ENDPOINT5,
 ];
 
 let latestId, lastEvent, checkInt;
@@ -138,7 +141,7 @@ const startTracking = () => {
         latestId = activeId;
     };
 
-    const delay = 3;
+    const delay = 0.1;
     checkInt = setInterval(check, delay*1e3);
 };
 
