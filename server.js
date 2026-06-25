@@ -79,6 +79,7 @@ const startTracking = () => {
                 
                 if (res.status === 401) {
                     activeId = id;
+                    console.log(`Found ID ${activeId} with ${ENDPOINT}`);
                 } else if (res.status !== 400) {
                     console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
                     return;
@@ -89,7 +90,7 @@ const startTracking = () => {
             }
         }
 
-        if (!activeId || activeId === latestId) return;
+        if (!activeId || activeId <= latestId) return;
 
         const nowSec = Math.floor(Date.now() / 1e3);
         
