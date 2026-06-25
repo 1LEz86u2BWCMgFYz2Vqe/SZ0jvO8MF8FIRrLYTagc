@@ -79,7 +79,9 @@ const startTracking = () => {
                 
                 if (res.status === 401) {
                     activeId = id;
-                    console.log(`Found ID ${activeId} with ${ENDPOINT}`);
+                    if(activeId > latestId || activeId < latestId){
+                        console.log(`Found ID ${activeId} with ${ENDPOINT}`);
+                    }
                 } else if (res.status !== 400) {
                     console.log(`Something went wrong on ID ${id} (status: ${res.status})`);
                     return;
