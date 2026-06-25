@@ -79,7 +79,7 @@ const startTracking = () => {
                 
                 if (res.status === 401) {
                     activeId = id;
-                    if(activeId > latestId || activeId < latestId){
+                    if(activeId > latestId){
                         console.log(`Found ID ${activeId} with ${ENDPOINT}`);
                     }
                 } else if (res.status !== 400) {
