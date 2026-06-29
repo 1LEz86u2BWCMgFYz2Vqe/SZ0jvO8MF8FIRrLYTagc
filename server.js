@@ -87,7 +87,7 @@ const startTracking = () => {
                     return;
                 }
             } catch (err) {
-                console.log(`Fetch error on ID ${id}:`, err);
+                console.log(`Fetch error on ID ${id} with ${ENDPOINT}:`, err);
                 return;
             }
         }
@@ -143,7 +143,7 @@ const startTracking = () => {
         latestId = activeId;
     };
 
-    const delay = 0.1;
+    const delay = 1;
     checkInt = setInterval(check, delay*1e3);
 };
 
