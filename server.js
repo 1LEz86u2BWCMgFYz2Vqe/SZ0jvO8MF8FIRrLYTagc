@@ -152,7 +152,7 @@ const GetSteamNotifications = async() => {
     const params = new URLSearchParams({
         access_token,
         input_protobuf_encoded: buildProtobufPayload(),
-        format: "json"
+        // format: "json"
     });
 
     try {
@@ -160,14 +160,14 @@ const GetSteamNotifications = async() => {
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         
         const data = await res.json();
-        console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
+        // console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
         return data;
 
     } catch (err) {
         console.log("Fetch for Steam Notifs failed:", err.message);
     }
 }
-setInterval(GetSteamNotifications, 10*1e3);
+setInterval(GetSteamNotifications, 30*1e3);
 
 wss.on('connection', (ws) => {
     ws.isAuthenticated = false;
