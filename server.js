@@ -13,6 +13,14 @@ const server = http.createServer((req, res) => {
     }
 });
 
+const broadcast = (payload) => {
+    wss.clients.forEach(client => {
+        if (client.readyState === 1 && client.isAuthenticated) {
+            client.send(JSON.stringify(payload));
+        }
+    });
+};
+
 let currStoreAssets, currStoreStr;
 const SAPI_KEY = process.env.SAPIKEY;
 const checkStore = async() => {
@@ -29,14 +37,7 @@ const checkStore = async() => {
             if (newAssetsStr !== currStoreStr) {
                 currStoreAssets = data.result.assets;
                 currStoreStr = newAssetsStr;         
-                wss.clients.forEach(client => {
-                    if (client.readyState === 1 && client.isAuthenticated) {
-                        client.send(JSON.stringify({
-                            type: 'store_update',
-                            assets: currStoreAssets
-                        }));
-                    }
-                });
+                broadcast({ type: 'store_update', assets: currStoreAssets });
             }
         }
     } catch(e) { 
@@ -112,16 +113,7 @@ const startTracking = () => {
             console.log(`Current post ID moved to ${activeId} (${signBase}${diffFromBase} total, ${signPrev}${diffFromPrev} from prev)`);
             lastEvent.id = activeId;
             lastEvent.timestamp = nowSec;
-
-            wss.clients.forEach(client => {
-                if (client.readyState === 1 && client.isAuthenticated) {
-                    client.send(JSON.stringify({
-                        type: 'batch_update',
-                        activeId,
-                        deleted
-                    }));
-                }
-            });
+            broadcast({ type: 'batch_update', activeId, deleted });
         } else {
             console.log(`Activity detected (Post ID: ${activeId}; ${signBase}${diffFromBase})`);
             lastEvent = {
@@ -129,15 +121,7 @@ const startTracking = () => {
                 timestamp: nowSec,
                 deleted
             };
-            wss.clients.forEach(client => {
-                if (client.readyState === 1 && client.isAuthenticated) {
-                    client.send(JSON.stringify({
-                        type: 'alert',
-                        activeId,
-                        deleted
-                    }));
-                }
-            });
+            broadcast({ type: 'alert', activeId, deleted });
         }
 
         latestId = activeId;
@@ -147,6 +131,43 @@ const startTracking = () => {
     checkInt = setInterval(check, delay*1e3);
 };
 
+const buildProtobufPayload = (opts = {}) => {
+    const bytes = [];
+
+    bytes.push(0x08, opts.include_hidden ? 1 : 0);
+    bytes.push(0x10, opts.language || 0);
+
+    if (opts.include_confirmation_count) bytes.push(0x18, 1);
+    if (opts.include_pinned_counts) bytes.push(0x20, 1);
+    
+    bytes.push(0x28, opts.include_read ? 1 : 0);
+
+    return Buffer.from(bytes).toString('base64');
+}
+
+let access_token;
+const GetSteamNotifications = async() => {
+    if(!access_token) return;
+
+    const params = new URLSearchParams({
+        access_token,
+        input_protobuf_encoded: buildProtobufPayload(),
+    });
+
+    try {
+        const res = await fetch(`https://api.steampowered.com/ISteamNotificationService/GetSteamNotifications/v1?${params.toString()}`);     
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        
+        const data = await res.json();
+        console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
+        return data;
+
+    } catch (err) {
+        console.log("Fetch for Steam Notifs failed:", err.message);
+    }
+}
+setInterval(GetSteamNotifications, 10*1e3);
+
 wss.on('connection', (ws) => {
     ws.isAuthenticated = false;
 
@@ -154,17 +175,18 @@ wss.on('connection', (ws) => {
         try {
             const payload = JSON.parse(data);
             if (payload.type === 'ping') return;
-            if (payload.type === 'auth_sync') {
-                if (payload.key === API_KEY) {
-                    ws.isAuthenticated = true;
-                    latestId = payload.latestId;
-                    console.log(`Baseline synced to ${latestId}`);
-                    ws.send(JSON.stringify({ type: 'status', msg: `Tracking from ID: ${latestId}` }));
-                    startTracking();
-                } else {
-                    ws.close();
-                }
+
+            if (payload.type === 'auth_sync' && payload.key === API_KEY) {
+                ws.isAuthenticated = true;
+                latestId = payload.latestId;
+                console.log(`Baseline synced to ${latestId}`);
+                ws.send(JSON.stringify({ type: 'status', msg: `Tracking from ID: ${latestId}` }));
+                startTracking();
+
             }
+            
+            if(payload.token) access_token = payload.token;
+
             if (payload.type === 'request_store_assets' && currStoreAssets) {
                 ws.send(JSON.stringify({
                     type: 'store_update',
