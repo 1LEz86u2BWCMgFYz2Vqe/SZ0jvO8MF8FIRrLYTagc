@@ -152,6 +152,7 @@ const GetSteamNotifications = async() => {
     const params = new URLSearchParams({
         access_token,
         input_protobuf_encoded: buildProtobufPayload(),
+        format: "json"
     });
 
     try {
@@ -184,7 +185,7 @@ wss.on('connection', (ws) => {
                 startTracking();
 
             }
-            
+
             if(payload.token) access_token = payload.token;
 
             if (payload.type === 'request_store_assets' && currStoreAssets) {
