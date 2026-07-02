@@ -158,8 +158,7 @@ const GetSteamNotifications = async() => {
     try {
         const res = await fetch(`https://api.steampowered.com/ISteamNotificationService/GetSteamNotifications/v1?${params.toString()}`);     
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-        
-        const data = await res.json();
+        // const data = await res.json();
         // console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
         return data;
 
