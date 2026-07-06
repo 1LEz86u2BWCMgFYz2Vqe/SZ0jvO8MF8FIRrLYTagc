@@ -71,7 +71,7 @@ const startTracking = () => {
         currEndpointIndex = (currEndpointIndex + 1) % ENDPOINTS.length;
 
         let activeId;
-        for (let i = -1; i <= 1; i++) {
+        for (let i = 1; i <= 1; i++) {
             const id = latestId + i;
             
             try {
@@ -162,7 +162,7 @@ const GetSteamNotifications = async() => {
         // console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
         // return data;
     } catch (err) {
-        console.log("Fetch for Steam Notifs failed:", err.message);
+        // console.log("Fetch for Steam Notifs failed:", err.message);
     }
 }
 setInterval(GetSteamNotifications, 30*1e3);
