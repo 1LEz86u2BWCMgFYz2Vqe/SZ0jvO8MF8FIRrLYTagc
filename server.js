@@ -21,9 +21,93 @@ const broadcast = (payload) => {
     });
 };
 
+const WORKSHOP_APPIDS = [730];
+const EXCLUDED_SECTIONS = [
+    'rgPopularDetails'
+];
+const currWorkshopStr = {};
+const currWorkshopSections = {};
+
+const splitJSONStream = (text) => {
+    const results = [];
+    let depth = 0, inStr = false, strChar = null, escape = false, start = null;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (start === null) {
+            if (ch === '{' || ch === '[') { start = i; depth = 1; inStr = false; escape = false; }
+            continue;
+        }
+        if (inStr) {
+            if (escape) escape = false;
+            else if (ch === '\\') escape = true;
+            else if (ch === strChar) inStr = false;
+            continue;
+        }
+        if (ch === '"') { inStr = true; strChar = ch; continue; }
+        if (ch === '{' || ch === '[') depth++;
+        else if (ch === '}' || ch === ']') {
+            depth--;
+            if (depth === 0) { results.push(text.slice(start, i + 1)); start = null; }
+        }
+    }
+    return results;
+};
+
+const extractWorkshopRoot = (rawBody) => {
+    let root = null;
+    for (const chunk of splitJSONStream(rawBody)) {
+        try {
+            const parsed = JSON.parse(chunk);
+            if (parsed && (parsed.rgRecentDetails || parsed.rgUpdatedDetails)) root = parsed;
+        } catch (e) { }
+    }
+    return root;
+};
+
+const isItemArray = (val) =>
+    Array.isArray(val) && val.length > 0 && val.every((i) => i && typeof i === 'object' && 'publishedfileid' in i);
+
+const filterSections = (root) => {
+    const sections = {};
+    for (const [key, val] of Object.entries(root)) {
+        if (EXCLUDED_SECTIONS.includes(key)) continue;
+        if (isItemArray(val) || (Array.isArray(val) && val.length === 0 && /Details$/.test(key))) {
+            sections[key] = val;
+        }
+    }
+    return sections;
+};
+
+
+const checkWorkshop = async () => {
+    for (const appid of WORKSHOP_APPIDS) {
+        try {
+            const res = await fetch(`https://steamcommunity.com/app/${appid}/workshop/`, {
+                headers: { 'x-valve-request-type': 'routeData' },
+                method: 'GET',
+            });
+            if (!res.ok) continue;
+            const rawBody = await res.text();
+            const root = extractWorkshopRoot(rawBody);
+            if (!root) continue;
+            const sections = filterSections(root);
+            const newStr = JSON.stringify(sections);
+            if (newStr !== currWorkshopStr[appid]) {
+                currWorkshopStr[appid] = newStr;
+                currWorkshopSections[appid] = sections;
+                broadcast({ type: 'workshop_update', appid, sections });
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+};
+setInterval(checkWorkshop, 60 * 1e3);
+checkWorkshop();
+
 let currStoreAssets, currStoreStr;
 const SAPI_KEY = process.env.SAPIKEY;
-const checkStore = async() => {
+const checkStore = async () => {
     try {
         const res = await fetch(`https://api.steampowered.com/ISteamEconomy/GetAssetPrices/v1/?appid=730&key=${SAPI_KEY}`);
 
@@ -36,15 +120,15 @@ const checkStore = async() => {
             const newAssetsStr = JSON.stringify(data.result.assets);
             if (newAssetsStr !== currStoreStr) {
                 currStoreAssets = data.result.assets;
-                currStoreStr = newAssetsStr;         
+                currStoreStr = newAssetsStr;
                 broadcast({ type: 'store_update', assets: currStoreAssets });
             }
         }
-    } catch(e) { 
+    } catch (e) {
         console.log(e);
     }
 };
-setInterval(checkStore, 1*1e3);
+setInterval(checkStore, 1 * 1e3);
 checkStore();
 
 const wss = new WebSocketServer({ server });
@@ -64,23 +148,23 @@ const startTracking = () => {
     console.log(`Tracking started. Baseline: ${latestId}`);
 
     let currEndpointIndex = 0;
-    const check = async() => {
+    const check = async () => {
         if (!latestId) return;
-        
+
         const ENDPOINT = ENDPOINTS[currEndpointIndex];
         currEndpointIndex = (currEndpointIndex + 1) % ENDPOINTS.length;
 
         let activeId;
         for (let i = 1; i <= 1; i++) {
             const id = latestId + i;
-            
+
             try {
                 const res = await fetch(ENDPOINT + id);
                 if (res.body) await res.body.cancel();
-                
+
                 if (res.status === 401) {
                     activeId = id;
-                    if(activeId > latestId){
+                    if (activeId > latestId) {
                         console.log(`Found ID ${activeId} with ${ENDPOINT}`);
                     }
                 } else if (res.status !== 400) {
@@ -96,19 +180,19 @@ const startTracking = () => {
         if (!activeId || activeId <= latestId) return;
 
         const nowSec = Math.floor(Date.now() / 1e3);
-        
+
         const prevId = lastEvent ? lastEvent.id : latestId;
         const diffFromBase = activeId - latestId;
         const diffFromPrev = activeId - prevId;
-        
+
         const deleted = diffFromBase < 0;
         const signBase = deleted ? '' : '+';
         const signPrev = diffFromPrev < 0 ? '' : '+';
-        
-        const batch = lastEvent && 
+
+        const batch = lastEvent &&
             (nowSec - lastEvent.timestamp < (60 * 10)) &&
             (lastEvent.deleted === deleted);
-              
+
         if (batch) {
             console.log(`Current post ID moved to ${activeId} (${signBase}${diffFromBase} total, ${signPrev}${diffFromPrev} from prev)`);
             lastEvent.id = activeId;
@@ -128,7 +212,7 @@ const startTracking = () => {
     };
 
     const delay = 1;
-    checkInt = setInterval(check, delay*1e3);
+    checkInt = setInterval(check, delay * 1e3);
 };
 
 const buildProtobufPayload = (opts = {}) => {
@@ -139,15 +223,15 @@ const buildProtobufPayload = (opts = {}) => {
 
     if (opts.include_confirmation_count) bytes.push(0x18, 1);
     if (opts.include_pinned_counts) bytes.push(0x20, 1);
-    
+
     bytes.push(0x28, opts.include_read ? 1 : 0);
 
     return Buffer.from(bytes).toString('base64');
 }
 
 let access_token;
-const GetSteamNotifications = async() => {
-    if(!access_token) return;
+const GetSteamNotifications = async () => {
+    if (!access_token) return;
 
     const params = new URLSearchParams({
         access_token,
@@ -156,7 +240,7 @@ const GetSteamNotifications = async() => {
     });
 
     try {
-        const res = await fetch(`https://api.steampowered.com/ISteamNotificationService/GetSteamNotifications/v1?${params.toString()}`);     
+        const res = await fetch(`https://api.steampowered.com/ISteamNotificationService/GetSteamNotifications/v1?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         // const data = await res.json();
         // console.log("Steam Notifs API returned:", JSON.stringify(data, null, 2));
@@ -165,7 +249,7 @@ const GetSteamNotifications = async() => {
         // console.log("Fetch for Steam Notifs failed:", err.message);
     }
 }
-setInterval(GetSteamNotifications, 30*1e3);
+setInterval(GetSteamNotifications, 30 * 1e3);
 
 wss.on('connection', (ws) => {
     ws.isAuthenticated = false;
@@ -184,13 +268,21 @@ wss.on('connection', (ws) => {
 
             }
 
-            if(payload.token) access_token = payload.token;
+            if (payload.token) access_token = payload.token;
 
             if (payload.type === 'request_store_assets' && currStoreAssets) {
                 ws.send(JSON.stringify({
                     type: 'store_update',
                     assets: currStoreAssets
                 }));
+            }
+
+            if (payload.type === 'request_workshop_sections') {
+                for (const appid of WORKSHOP_APPIDS) {
+                    if (currWorkshopSections[appid]) {
+                        ws.send(JSON.stringify({ type: 'workshop_update', appid, sections: currWorkshopSections[appid] }));
+                    }
+                }
             }
         } catch (e) { }
     });
