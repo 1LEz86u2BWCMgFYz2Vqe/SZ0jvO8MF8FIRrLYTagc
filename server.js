@@ -22,9 +22,8 @@ const broadcast = (payload) => {
 };
 
 const WORKSHOP_APPIDS = [730];
-const EXCLUDED_SECTIONS = [
-    'rgPopularDetails'
-];
+const EXCLUDED_SECTIONS = [];
+const EXCLUDED_FIELDS = {};
 const currWorkshopStr = {};
 const currWorkshopSections = {};
 
@@ -53,44 +52,69 @@ const splitJSONStream = (text) => {
     return results;
 };
 
-const extractWorkshopRoot = (rawBody) => {
-    let root = null;
-    for (const chunk of splitJSONStream(rawBody)) {
-        try {
-            const parsed = JSON.parse(chunk);
-            if (parsed && (parsed.rgRecentDetails || parsed.rgUpdatedDetails)) root = parsed;
-        } catch (e) { }
-    }
-    return root;
-};
-
 const isItemArray = (val) =>
     Array.isArray(val) && val.length > 0 && val.every((i) => i && typeof i === 'object' && 'publishedfileid' in i);
 
-const filterSections = (root) => {
+const stripFields = (label, val) => {
+    const fields = EXCLUDED_FIELDS[label];
+    if (!fields || !val || typeof val !== 'object' || Array.isArray(val)) return val;
+    const copy = { ...val };
+    for (const f of fields) delete copy[f];
+    return copy;
+};
+
+const extractSections = (rawBody) => {
     const sections = {};
-    for (const [key, val] of Object.entries(root)) {
-        if (EXCLUDED_SECTIONS.includes(key)) continue;
-        if (isItemArray(val) || (Array.isArray(val) && val.length === 0 && /Details$/.test(key))) {
-            sections[key] = val;
+    for (const chunk of splitJSONStream(rawBody)) {
+        let parsed;
+        try {
+            parsed = JSON.parse(chunk);
+        } catch (e) {
+            continue;
+        }
+        if (!parsed || typeof parsed !== 'object') continue;
+
+        for (const [key, val] of Object.entries(parsed)) {
+            if (EXCLUDED_SECTIONS.includes(key)) continue;
+            if (isItemArray(val)) sections[key] = val;
+        }
+
+        if (typeof parsed.queryData === 'string') {
+            let cache;
+            try {
+                cache = JSON.parse(parsed.queryData);
+            } catch (e) {
+                continue;
+            }
+            for (const q of cache.queries || []) {
+                const data = q.state?.data;
+                const label = Array.isArray(q.queryKey) ? String(q.queryKey[0]) : q.queryHash;
+                if (EXCLUDED_SECTIONS.includes(label)) continue;
+                if (data === undefined || data === null) continue;
+
+                if (isItemArray(data)) {
+                    sections[label] = data;
+                } else if (isItemArray(data.results)) {
+                    sections[label] = data.results;
+                } else {
+                    sections[label] = stripFields(label, data);
+                }
+            }
         }
     }
     return sections;
 };
 
-
 const checkWorkshop = async () => {
     for (const appid of WORKSHOP_APPIDS) {
         try {
-            const res = await fetch(`https://steamcommunity.com/app/${appid}/workshop/`, {
+            const res = await fetch(`https://steamcommunity.com/workshop/browse/?appid=${appid}&browsesort=accepted&section=mtxitems&special_filter=1&admin_view=1`, {
                 headers: { 'x-valve-request-type': 'routeData' },
                 method: 'GET',
             });
             if (!res.ok) continue;
             const rawBody = await res.text();
-            const root = extractWorkshopRoot(rawBody);
-            if (!root) continue;
-            const sections = filterSections(root);
+            const sections = extractSections(rawBody);
             const newStr = JSON.stringify(sections);
             if (newStr !== currWorkshopStr[appid]) {
                 currWorkshopStr[appid] = newStr;
@@ -102,7 +126,7 @@ const checkWorkshop = async () => {
         }
     }
 };
-setInterval(checkWorkshop, 60 * 1e3);
+setInterval(checkWorkshop, 60*1e3);
 checkWorkshop();
 
 let currStoreAssets, currStoreStr;
