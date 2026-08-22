@@ -21,7 +21,10 @@ const broadcast = (payload) => {
     });
 };
 
-const WORKSHOP_APPIDS = [730];
+const WORKSHOP_APPIDS = [
+    730,
+    440,
+];
 const EXCLUDED_SECTIONS = [
     "PlayerLinkDetails",
     "workshop_browse",
@@ -158,7 +161,7 @@ const checkWorkshop = async () => {
         }
     }
 };
-setInterval(checkWorkshop, 1*1e3);
+setInterval(checkWorkshop, 1 * 1e3);
 checkWorkshop();
 
 let currStoreAssets, currStoreStr;
