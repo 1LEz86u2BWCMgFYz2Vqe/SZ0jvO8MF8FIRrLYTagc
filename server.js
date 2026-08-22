@@ -30,7 +30,7 @@ const EXCLUDED_KEYS = [
     "views",
 ];
 const EXCLUDED_SECTION_FIELDS = [
-    { prefix: "workshop_about_numbers", fields: ["total"] },
+    { prefix: "workshop_about_numbers", fields: ["total", "total_incompatible"] },
 ];
 
 const applyExcludedSectionFields = (sections) => {
@@ -158,7 +158,7 @@ const checkWorkshop = async () => {
         }
     }
 };
-setInterval(checkWorkshop, 60 * 1e3);
+setInterval(checkWorkshop, 1*1e3);
 checkWorkshop();
 
 let currStoreAssets, currStoreStr;
