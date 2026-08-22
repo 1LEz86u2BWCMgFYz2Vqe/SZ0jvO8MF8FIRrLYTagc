@@ -29,6 +29,22 @@ const EXCLUDED_SECTIONS = [
 const EXCLUDED_KEYS = [
     "views",
 ];
+const EXCLUDED_SECTION_FIELDS = [
+    { prefix: "workshop_about_numbers", fields: ["total"] },
+];
+
+const applyExcludedSectionFields = (sections) => {
+    for (const { prefix, fields } of EXCLUDED_SECTION_FIELDS) {
+        for (const label of Object.keys(sections)) {
+            if (!label.startsWith(prefix)) continue;
+            const val = sections[label];
+            if (val && typeof val === 'object' && !Array.isArray(val)) {
+                for (const f of fields) delete val[f];
+            }
+        }
+    }
+};
+
 const currWorkshopStr = {};
 const currWorkshopSections = {};
 
@@ -117,6 +133,7 @@ const extractSections = (rawBody) => {
             }
         }
     }
+    applyExcludedSectionFields(sections);
     return sections;
 };
 
