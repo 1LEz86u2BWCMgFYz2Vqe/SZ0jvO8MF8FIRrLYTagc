@@ -99,9 +99,13 @@ const extractSections = (rawBody) => {
             }
             for (const q of cache.queries || []) {
                 const data = q.state?.data;
-                const label = Array.isArray(q.queryKey) ? String(q.queryKey[0]) : q.queryHash;
-                if (EXCLUDED_SECTIONS.includes(label)) continue;
+                const sectionName = Array.isArray(q.queryKey) ? String(q.queryKey[0]) : q.queryHash;
+                if (EXCLUDED_SECTIONS.includes(sectionName)) continue;
                 if (data === undefined || data === null) continue;
+
+                const label = Array.isArray(q.queryKey)
+                    ? q.queryKey.map((k) => (typeof k === 'object' ? JSON.stringify(k) : String(k))).join('|')
+                    : q.queryHash;
 
                 if (isItemArray(data)) {
                     sections[label] = stripKeys(data);
@@ -137,7 +141,7 @@ const checkWorkshop = async () => {
         }
     }
 };
-setInterval(checkWorkshop, 60*1e3);
+setInterval(checkWorkshop, 60 * 1e3);
 checkWorkshop();
 
 let currStoreAssets, currStoreStr;
