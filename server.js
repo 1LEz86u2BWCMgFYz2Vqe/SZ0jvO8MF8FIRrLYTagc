@@ -347,6 +347,62 @@ wss.on('connection', (ws) => {
     });
 });
 
+const SteamUser = require('steam-user');
+const GlobalOffensive = require('globaloffensive');
+const steamClient = new SteamUser();
+
+const ConnectToSteam = () => {
+    steamClient.logOn({
+        accountName: process.env.STEAMUSER,
+        password: process.env.STEAMPW
+    });
+}
+ConnectToSteam();
+setInterval(() => {
+    steamClient.logOff(); 
+    setTimeout(ConnectToSteam, 5*1e3);
+}, 5*60*1e3);
+
+steamClient.on('loggedOn', () => {
+    steamClient.setPersona(SteamUser.EPersonaState.Online);
+    steamClient.gamesPlayed([730]);
+});
+steamClient.on('error', (err) => {
+    console.log("Steam Error:", err.message);
+});
+steamClient.on('disconnected', (eresult, msg) => {
+    console.log(`Disconnected from Steam (${eresult}): ${msg}`);
+});
+
+const CSProtos = require('globaloffensive/protobufs/generated/_load.js');
+const BaseProtos = require('globaloffensive/protobufs/generated/base_gcmessages.js');
+
+let gcInt;
+const csgo = new GlobalOffensive(steamClient);
+csgo.on('connectedToGC', async () => {
+    if (gcInt) clearInterval(gcInt);
+    const storePayload = BaseProtos.CMsgStoreGetUserData.encode({
+        pricesheetversion: 0,
+        currency: 0,
+    }).finish();
+    gcInt = setInterval(() => {
+        steamClient.sendToGC(730, CSProtos.EGCItemMsg.k_EMsgGCStoreGetUserData, {}, Buffer.from(storePayload));
+    }, 1*1e3); 
+});
+
+let currStore;
+steamClient.on('receivedFromGC', (appId, msgType, payload) => {
+    if (appId === 730) {
+        if (msgType === CSProtos.EGCItemMsg.k_EMsgGCStoreGetUserDataResponse) {
+            if (!currStore || !currStore.equals(payload)) {
+                currStore = Buffer.from(payload); 
+                currStoreAssets = currStore.toString('base64');
+                broadcast({ type: 'store_update', assets: currStoreAssets });
+            }
+        }
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
