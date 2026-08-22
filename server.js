@@ -362,7 +362,7 @@ ConnectToSteam();
 setInterval(() => {
     steamClient.logOff(); 
     setTimeout(ConnectToSteam, 5*1e3);
-}, 5*60*1e3);
+}, 30*60*1e3);
 
 steamClient.on('loggedOn', () => {
     steamClient.setPersona(SteamUser.EPersonaState.Online);
