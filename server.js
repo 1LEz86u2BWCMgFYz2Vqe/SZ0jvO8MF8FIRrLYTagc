@@ -28,6 +28,7 @@ const WORKSHOP_APPIDS = [
 const EXCLUDED_SECTIONS = [
     "PlayerLinkDetails",
     "workshop_browse",
+    "StoreItem",
 ];
 const EXCLUDED_KEYS = [
     "views",
