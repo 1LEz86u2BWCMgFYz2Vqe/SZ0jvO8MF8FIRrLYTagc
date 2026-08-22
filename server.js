@@ -22,8 +22,13 @@ const broadcast = (payload) => {
 };
 
 const WORKSHOP_APPIDS = [730];
-const EXCLUDED_SECTIONS = [];
-const EXCLUDED_FIELDS = {};
+const EXCLUDED_SECTIONS = [
+    "PlayerLinkDetails",
+    "workshop_browse",
+];
+const EXCLUDED_KEYS = [
+    "views",
+];
 const currWorkshopStr = {};
 const currWorkshopSections = {};
 
@@ -55,12 +60,18 @@ const splitJSONStream = (text) => {
 const isItemArray = (val) =>
     Array.isArray(val) && val.length > 0 && val.every((i) => i && typeof i === 'object' && 'publishedfileid' in i);
 
-const stripFields = (label, val) => {
-    const fields = EXCLUDED_FIELDS[label];
-    if (!fields || !val || typeof val !== 'object' || Array.isArray(val)) return val;
-    const copy = { ...val };
-    for (const f of fields) delete copy[f];
-    return copy;
+const stripKeys = (val) => {
+    if (!EXCLUDED_KEYS.length) return val;
+    if (Array.isArray(val)) return val.map(stripKeys);
+    if (val && typeof val === 'object') {
+        const copy = {};
+        for (const [k, v] of Object.entries(val)) {
+            if (EXCLUDED_KEYS.includes(k)) continue;
+            copy[k] = v;
+        }
+        return copy;
+    }
+    return val;
 };
 
 const extractSections = (rawBody) => {
@@ -76,7 +87,7 @@ const extractSections = (rawBody) => {
 
         for (const [key, val] of Object.entries(parsed)) {
             if (EXCLUDED_SECTIONS.includes(key)) continue;
-            if (isItemArray(val)) sections[key] = val;
+            if (isItemArray(val)) sections[key] = stripKeys(val);
         }
 
         if (typeof parsed.queryData === 'string') {
@@ -93,11 +104,11 @@ const extractSections = (rawBody) => {
                 if (data === undefined || data === null) continue;
 
                 if (isItemArray(data)) {
-                    sections[label] = data;
+                    sections[label] = stripKeys(data);
                 } else if (isItemArray(data.results)) {
-                    sections[label] = data.results;
+                    sections[label] = stripKeys(data.results);
                 } else {
-                    sections[label] = stripFields(label, data);
+                    sections[label] = stripKeys(data);
                 }
             }
         }
