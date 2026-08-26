@@ -25,14 +25,18 @@ const WORKSHOP_APPIDS = [
     730,
     440,
 ];
+
 const EXCLUDED_SECTIONS = [
     "PlayerLinkDetails",
     "workshop_browse",
     "StoreItem",
 ];
+
 const EXCLUDED_KEYS = [
     "views",
+    "rgContentDescriptorIDs",
 ];
+
 const EXCLUDED_SECTION_FIELDS = [
     { prefix: "workshop_about_numbers", fields: ["total", "total_incompatible"] },
 ];
